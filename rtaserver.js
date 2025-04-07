@@ -456,4 +456,113 @@ app.all("/send-message", async (req, res) => {
   }
 });
 
+app.all("/send-message-main", async (req, res) => {
+  const pesankirim = req.body.message || req.query.message;
+  const numbers = (req.body.number || req.query.number).split(',');
+  let numberWA;
+
+  // Function to send message with retry logic
+  const sendMessageWithRetry = async (numberWA, pesankirim, retryCount = 0) => {
+    if (retryCount >= 3) {
+      // Limit the retries to avoid infinite loop
+      return {
+        status: false,
+        response: 'Max retry attempts reached, please try again later.',
+      };
+    }
+
+    try {
+      if (!numberWA) {
+        return {
+          status: false,
+          response: "Nomor WA belum tidak disertakan!",
+        };
+      }
+
+      if (numberWA.startsWith("0")) {
+        numberWA = global.countrycodephone + numberWA.substring(1) + "@s.whatsapp.net";
+      } else {
+        numberWA = numberWA + "@s.whatsapp.net";
+      }
+
+      const exists = await rtaserver.onWhatsApp(numberWA);
+      if (isConnected) {
+        if (exists?.jid || (exists && exists[0]?.jid)) {
+          let usepp = {};
+          if (global.use_pp === true) {
+            usepp = {
+              image: pp_bot,
+              caption: pesankirim,
+            };
+          } else {
+            usepp = {
+              text: pesankirim,
+            };
+          }
+
+          const result = await rtaserver.sendMessage(exists.jid || exists[0].jid, usepp);
+          return {
+            status: true,
+            response: result,
+          };
+        } else {
+          return {
+            status: false,
+            response: `Nomor ${numberWA} tidak terdaftar.`,
+          };
+        }
+      } else {
+        return {
+          status: false,
+          response: `WhatsApp belum terhubung.`,
+        };
+      }
+    } catch (err) {
+      if (retryCount < 3) {
+        // Retry on failure
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds before retry
+        return sendMessageWithRetry(numberWA, pesankirim, retryCount + 1); // Retry after 2 seconds
+      } else {
+        return {
+          status: false,
+          response: err,
+        };
+      }
+    }
+  };
+
+  // Handle sending messages to all numbers in the list with a 6-second delay between each message
+  const sendMessagesWithDelay = async () => {
+    let responseResults = [];
+
+    for (let i = 0; i < numbers.length; i++) {
+      const number = numbers[i];
+      const result = await sendMessageWithRetry(number, pesankirim);
+
+      responseResults.push(result);
+
+      // Wait 6 seconds before sending the next message
+      if (i < numbers.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 6000)); // Wait for 6 seconds
+      }
+    }
+
+    return responseResults;
+  };
+
+  // Send the messages with a delay and then return the response
+  try {
+    const result = await sendMessagesWithDelay();
+    res.status(200).json({
+      status: true,
+      response: result,
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: false,
+      response: err,
+    });
+  }
+});
+
 Botstarted();
