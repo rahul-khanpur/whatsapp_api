@@ -36,6 +36,21 @@ const callUrl = async () => {
   }
 };
 
-// Call the URL immediately and then every 10 minutes (600,000 ms = 10 minutes)
+// The URL you want to call
+const url_test_msg = 'https://whatsapp-api-nz96.onrender.com/send-message?message=Server_Ok&number=9883144799';
+
+// Function to make the HTTP request
+const sendTestMsg = async () => {
+  try {
+    const response = await axios.get(url_test_msg);
+    console.log(`Successfully called the URL: ${response.status}`);
+  } catch (error) {
+    console.error('Error calling the URL:', error.message);
+  }
+};
+
 callUrl();
-setInterval(callUrl, 600000); // 600,000 ms = 10 minutes
+sendTestMsg();
+
+setInterval(callUrl, 600000);
+setInterval(sendTestMsg, 3600000);
