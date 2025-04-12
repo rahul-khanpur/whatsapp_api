@@ -523,6 +523,7 @@ app.all("/send-message-main", async (req, res) => {
         await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds before retry
         return sendMessageWithRetry(numberWA, pesankirim, retryCount + 1); // Retry after 2 seconds
       } else {
+        console.log(`Status: ${false}, Response: ${err}`);
         return {
           status: false,
           response: err,
