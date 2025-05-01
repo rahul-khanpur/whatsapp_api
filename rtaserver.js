@@ -456,6 +456,68 @@ app.all("/send-message", async (req, res) => {
   }
 });
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+app.all("/send-message-bulk", async (req, res) => {
+  const pesankirim = req.body.message || req.query.message;
+  const numberInput = req.body.number || req.query.number;
+  
+  if (!numberInput) {
+    return res.status(400).json({
+      status: false,
+      response: "Nomor WA belum disertakan!",
+    });
+  }
+
+  const numbers = numberInput.split(",").map(num => num.trim());
+  const results = [];
+
+  try {
+    for (let i = 0; i < numbers.length; i++) {
+      const number = numbers[i];
+      let numberWA;
+
+      if (number.startsWith("0")) {
+        numberWA = global.countrycodephone + number.substring(1) + "@s.whatsapp.net";
+      } else {
+        numberWA = number + "@s.whatsapp.net";
+      }
+
+      const exists = await rtaserver.onWhatsApp(numberWA);
+
+      if (exists?.jid || (exists && exists[0]?.jid)) {
+        const usepp = global.use_pp ? { image: pp_bot, caption: pesankirim } : { text: pesankirim };
+        try {
+          const result = await rtaserver.sendMessage(exists.jid || exists[0].jid, usepp);
+          results.push({ number, status: true, response: result });
+
+          if (global.kirimkontak_admin == true) {
+            await rtaserver.sendContact(exists.jid || exists[0].jid, global.kontakadmin);
+          }
+        } catch (err) {
+          results.push({ number, status: false, response: err.toString() });
+        }
+      } else {
+        results.push({ number, status: false, response: `Nomor ${number} tidak terdaftar.` });
+      }
+
+      if (i < numbers.length - 1) {
+        await sleep(6000); // 6-second delay
+      }
+    }
+
+    res.status(200).json({
+      status: true,
+      results,
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: false,
+      response: err.toString(),
+    });
+  }
+});
+
 app.all("/send-message-main", async (req, res) => {
   const pesankirim = req.body.message || req.query.message;
   const numbers = (req.body.number || req.query.number).split(',');
