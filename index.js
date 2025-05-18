@@ -37,7 +37,7 @@ const callUrl = async () => {
 };
 
 // The URL you want to call
-const url_test_msg = 'https://whatsapp-api-nz96.onrender.com/send-message?message=Server_Ok&number=9883144799';
+const url_test_msg = 'https://whatsapp-api-nz96.onrender.com/send-message?message=Server_Ok&number=6297890236';
 
 // Function to make the HTTP request
 const sendTestMsg = async () => {
